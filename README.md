@@ -1,4 +1,3 @@
-# 99
 99Things! - CGA Version README.TXT
 ==================================
 
