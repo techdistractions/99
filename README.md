@@ -1,9 +1,11 @@
 99Things! - CGA Version README.TXT
 ==================================
 
-Version: 1.0.0 - 17th April 2025
+Version: 1.0.1 - 18th April 2025
 4am Programming
 Website: www.4am.org/99
+
+See 'Changelog' section of this document for changes.
 
 License Information
 -------------------
@@ -221,3 +223,23 @@ continues to compile and run on the target PC: 8088 4.77mhz/CGA/256KB RAM
 
 This code went through a few twists and turns as I had to re-scope and remove many
 features and items to fit under the 256KB limbo-bar. 		
+
+Changelog
+---------
+v1.0.1 - 18th April 2025 - Micro Update
+
+[WORKAROUND] 'ESC' key doesn't work well in emulators.
+Added - F10 key to perform same function as ESC in QuickGame and DoDialog
+
+[FIX] If mouse is used the screen may get glitches when starting a game
+	Removed Mouse toggling from RandomPal - make it the calling func's problem
+	Implemented mouse toggle in QuickGame -> "{" for RandomPal without clear in EGA
+
+[ADDED] Added mouse button detection as "press any key" on end of game dialog
+	-TryRecord and QuickGame (after entering name for record)
+
+[ADDED] Setting for high-intensity colors (dont use hi-intensity palettes)
+	Implemented in RandomPal, ApplySetting and DoSetup
+	Can be adjusted in CONFIG.DAT manually by setting NoHiPal% = 1 to force 1,3,5 pals
+
+v1.0.0 - 17th April 2025 - Initial release
