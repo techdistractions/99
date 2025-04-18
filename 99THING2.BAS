@@ -55,7 +55,7 @@ COMMON SHARED SUITabVis%, TryX%, TryY%, TryCount%, PuzListCount%
 COMMON SHARED UseP%, UseX%, UseY%, UseC%, UseF%, TargetCount%, OffSetX%, OffSetY%, Found%
 COMMON SHARED B%, V%, H%, RemoveOnFind%, CurrentBoard%, CFound%, GameStreakCount%, GameCurrentStreak%
 COMMON SHARED UseOrientations%, UseDispVar%, PrevBoard%, mButtonUP%, LastMenu%, MixBagSize%, GameErrorCount%, LowMem%, ConfigFlag%, GamePreset%
-COMMON SHARED PrevPuzMajor%, PrevTarMajor%, PalXCount%, UseExtendedPal%
+COMMON SHARED PrevPuzMajor%, PrevTarMajor%, PalXCount%, UseExtendedPal%, NoHiPals%
 COMMON SHARED Regs AS RegType 'Registers for interrupts
 
 '====[Temp Assets]====
@@ -82,6 +82,7 @@ COMMON SHARED Regs AS RegType 'Registers for interrupts
 'UsePCSpk% - Play music and sound effects through PC Speaker [0-1] (if UseAdlib% = 0)
 'ConfigFlag% - 0 None 1 Loaded
 'LowMem% - Flag for <64KB free memory after assets loaded. Limit to 2 boards
+'NoHiPals% - 0-Default, 1-Only use 1,3,[5] and if CGAMode% = 1 dont use anything with >9 as a color
 
 '====[Program Runtime]====
 'B%, V%, H% - Mouse polling button, vertical and horizontal - I used large numbers as when a mouse is not connected it might give an error
@@ -182,6 +183,7 @@ SELECT CASE useParm$  'Apply the setting (no validation)
 	CASE "NOBLANK%": NoBlank% = useVal%
 	CASE "LOWMEM%": LowMem% = useVal%
 	CASE "USEEXTENDEDPAL%": UseExtendedPal% = useVal%
+	CASE "NOHIPALS%": NoHiPals% = useVal%
 END SELECT
 
 
@@ -318,6 +320,7 @@ PRINT #F, "UsePCSpk%="; LTRIM$(STR$(UsePCSpk%))
 PRINT #F, "NoBlank%="; LTRIM$(STR$(NoBlank%))
 PRINT #F, "LowMem%="; LTRIM$(STR$(LowMem%))
 PRINT #F, "UseExtendedPal%="; LTRIM$((STR$(UseExtendedPal%)));
+PRINT #F, "NoHiPals%="; LTRIM$((STR$(NoHiPals%)));
 CLOSE F
 
 END SUB
@@ -600,7 +603,7 @@ PUT (SUIX% + 76, UseU%), BigFont%((UseB% MOD 10) * 32), PSET
 PrevTarMajor% = 1
 ELSE
 IF PrevTarMajor% = 1 THEN
-	LINE (SUIX% + 63, UseU%)-(SUIX% + 98, SUIY% + 85), 0, BF'Clear    
+	LINE (SUIX% + 63, UseU%)-(SUIX% + 98, SUIY% + 85), 0, BF'Clear   
 	PrevTarMajor% = 0 'reset
 END IF
 PUT (SUIX% + 70, UseU%), BigFont%(UseB% * 32), PSET
@@ -624,7 +627,7 @@ END SUB
 
 SUB QuickGame 'Game Board 2.0
 QuickGameStart:
-
+HideMouse
 REDIM TempImage%(128)
 IF UsePCSpk% = 1 THEN
 MuteFlag% = 2
@@ -635,7 +638,6 @@ MuteFlag% = 3 'Figure out what we would mute
 END IF
 
 'Set Up Screen
-HideMouse
 CLS
 RandomPal
 BoardBG% = 0
@@ -875,7 +877,7 @@ SELECT CASE UKey$ 'Handle Key Inputs
 	GOTO PuzzleTry
 
 
-	CASE CHR$(27) 'Quit Dialog
+	CASE CHR$(27), CHR$(0) + CHR$(68) 'Quit Dialog
 		HideMouse
 		CellX% = OffSetX% + (BoardCols% + 1) * CellSize% - 1: CellY% = OffSetY% + (BoardRows% + 1) * CellSize% - 1
 		IF BoardMax% = 1 THEN REDIM Board%(4082): GET (OffSetX% - 1, OffSetY% - 1)-(CellX%, CellY%), Board%
@@ -933,7 +935,7 @@ SELECT CASE UKey$ 'Handle Key Inputs
        
 	CASE "{", "}"'Change Palettes in a non-timed game
 	IF CGAMode% = 1 AND UseTimer&(0) = 0 THEN
-	Prev% = NoBlank%: RandomPal: NoBlank% = Prev%
+	Prev% = NoBlank%: HideMouse: RandomPal: ShowMouse: NoBlank% = Prev%
 	IF UKey$ = "}" THEN 'Do it and show the numbers for debug
 		LOCATE 1, 1: FOR J% = 0 TO 3: PRINT SplitWords$(J%); " "; : NEXT J%
 		PRINT STRING$(3, " ");
@@ -1020,7 +1022,9 @@ IF Puzzle%(Cell%) = PuzList%(PuzPos%) AND PuzzleFlag%(Cell%) = 0 THEN  'Found!
 			IF UseTimer&(0) = 0 THEN LOCATE 17, 11: PRINT "Enable TIMED Game";
 			uSleep .75
 			cPrint "Press a key to close", 21, 11, 2, 0
-			UKey$ = "": DO: UKey$ = INKEY$: LOOP WHILE UKey$ = ""
+			UKey$ = "": DO: UKey$ = INKEY$
+				IF UseMouse% = 1 THEN : Mouse 3: IF B% > 0 THEN EXIT DO
+			LOOP WHILE UKey$ = ""
 			EXIT SUB
 			END IF
 		       
@@ -1252,7 +1256,10 @@ END IF
 QuitRecord: 'For fails or terminate
 ERASE uRecs$, rUser$, rTime%, rDate$, rStreak%, rErrors%
 iPrint "- PRESS A KEY TO CLOSE -", 112, 166, 2, 0
-UKey$ = "": DO: UKey$ = INKEY$: LOOP WHILE UKey$ = ""
+ShowMouse
+UKey$ = "": DO: UKey$ = INKEY$
+IF UseMouse% = 1 THEN : Mouse 3: IF B% > 0 THEN EXIT DO
+LOOP WHILE UKey$ = ""
 EXIT SUB
 
 PrintTable: 'Display mini records table

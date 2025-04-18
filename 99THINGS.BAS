@@ -1,4 +1,3 @@
-DECLARE SUB PalXInit ()
 '$DYNAMIC
 
 DEFINT A-Z
@@ -20,6 +19,7 @@ DECLARE FUNCTION SecsToTime$ (inSecs%, fFlag%)
 DECLARE FUNCTION GetGameID$ (InRecord%)
 
 '====[Declare SUBS]====
+DECLARE SUB PalXInit ()
 DECLARE SUB DoSetup ()
 DECLARE SUB dAddI (uItem%, udItem%, udStartX%, udStartY%, udInitVal%, udMinVal%, udMaxVal%, udText$, udHover$) 'Add Dialog Item
 DECLARE SUB mAddI (umItem%, umOptionText$, umHoverText$, umOptionThing%) 'Add Menu Item
@@ -56,7 +56,7 @@ COMMON SHARED SUITabVis%, TryX%, TryY%, TryCount%, PuzListCount%
 COMMON SHARED UseP%, UseX%, UseY%, UseC%, UseF%, TargetCount%, OffSetX%, OffSetY%, Found%
 COMMON SHARED B%, V%, H%, RemoveOnFind%, CurrentBoard%, CFound%, GameStreakCount%, GameCurrentStreak%
 COMMON SHARED UseOrientations%, UseDispVar%, PrevBoard%, mButtonUP%, LastMenu%, MixBagSize%, GameErrorCount%, LowMem%, ConfigFlag%, GamePreset%
-COMMON SHARED PrevPuzMajor%, PrevTarMajor%, PalXCount%, UseExtendedPal%
+COMMON SHARED PrevPuzMajor%, PrevTarMajor%, PalXCount%, UseExtendedPal%, NoHiPals%
 COMMON SHARED Regs AS RegType 'Registers for interrupts
 
 '====[Temp Assets]====
@@ -86,6 +86,7 @@ COMMON SHARED Regs AS RegType 'Registers for interrupts
 'UsePCSpk% - Play music and sound effects through PC Speaker [0-1] (if UseAdlib% = 0)
 'ConfigFlag% - 0 None 1 Loaded
 'LowMem% - Flag for <64KB free memory after assets loaded. Limit to 2 boards
+'NoHiPals% - 0-Default, 1-Only use 1,3,[5] and if CGAMode% = 1 dont use anything with >9 as a color
 
 '====[Program Runtime]====
 'B%, V%, H% - Mouse polling button, vertical and horizontal - I used large numbers as when a mouse is not connected it might give an error
@@ -760,7 +761,7 @@ IF UseMouse% = 1 THEN 'Capture Mouse Input
 END IF: LOOP WHILE uKey$ = ""
 
 SELECT CASE uKey$  'Process Keyboard Navigation
-CASE CHR$(27): DoDialog% = -1: EXIT FUNCTION
+CASE CHR$(27), CHR$(0) + CHR$(68): DoDialog% = -1: EXIT FUNCTION 'ESC or F10
 
 CASE CHR$(0) + CHR$(72), "W", "w" 'UP
 PrvSel%(4) = CurSel%(4)
@@ -1085,14 +1086,24 @@ CPal%(0) = 2: CCol%(0) = 9: CPal%(1) = 2: CCol%(1) = 5
 CPal%(2) = 2: CCol%(2) = 8: CPal%(3) = 5: CCol%(3) = 1
 CPal%(4) = 6: CCol%(4) = 1: CPal%(5) = 6: CCol%(5) = 5
 CPal%(6) = 6: CCol%(6) = 8: CPal%(7) = 6: CCol%(7) = 9
-HideMouse
 SELECT CASE Flag%
+
+'NoHiPals% - 0-Default, 1-Only use 1,3,[5] and if CGAMode% = 1 dont use anything with >9 as a color
+
 CASE 1 'Standard Pals
-	UseA% = INT(RND * 7): CGAPal CPal%(UseA%), CCol%(UseA%) 'Standard Randomness..
-CASE 2 'Extended Pals
+	SELECT CASE NoHiPals%
+		CASE 0
+			UseA% = INT(RND * 7): CGAPal CPal%(UseA%), CCol%(UseA%) 'Standard Randomness..
+		CASE 1  'Choose only low pals 1,3 or 5
+			SELECT CASE CGAMode%: CASE 0: MaxPal% = 4: CASE 2: MaxPal% = 3: END SELECT'3 Pals for Extended CGA, 2 Pals for Compat
+			UseA% = INT(RND * MaxPal%)
+			SELECT CASE UseA%: CASE 1: UseP% = 1: CASE 2: UseP% = 3: CASE 4: UseP% = 5: END SELECT
+			CGAPal UseP%, CCol%(UseP%)
+	END SELECT
+CASE 2 'Extended Pals 'NoHiPals% to be implemeted here later. For now just edit PALX.CGA
 	UseA% = INT(RND * PalXCount%): CGAPal UseA%, -1 'Extended Mode
 END SELECT
-ShowMouse
+
 
 END SUB
 
