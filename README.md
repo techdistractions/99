@@ -1,7 +1,7 @@
 99Things! - CGA Version README.TXT
 ==================================
 
-Version: 1.0.2 - 19th April 2025
+Version: 1.0.2a - 19th April 2025
 4am Programming
 Website: www.4am.org/99
 
@@ -225,6 +225,9 @@ This code went through a few twists and turns as I had to re-scope and remove ma
 features and items to fit under the 256KB limbo-bar. 		
 
 Changelog
+
+v1.0.2a - 19th April 2025 - Micro Update
+[FIX] Removed ; from CONFIG.DAT DoSetup
 
 v1.0.2 - 19th April 2025 - Micro Update
 
