@@ -55,7 +55,7 @@ COMMON SHARED SUITabVis%, TryX%, TryY%, TryCount%, PuzListCount%
 COMMON SHARED UseP%, UseX%, UseY%, UseC%, UseF%, TargetCount%, OffSetX%, OffSetY%, Found%
 COMMON SHARED B%, V%, H%, RemoveOnFind%, CurrentBoard%, CFound%, GameStreakCount%, GameCurrentStreak%
 COMMON SHARED UseOrientations%, UseDispVar%, PrevBoard%, mButtonUP%, LastMenu%, MixBagSize%, GameErrorCount%, LowMem%, ConfigFlag%, GamePreset%
-COMMON SHARED PrevPuzMajor%, PrevTarMajor%, PalXCount%, UseExtendedPal%, NoHiPals%
+COMMON SHARED PrevPuzMajor%, PrevTarMajor%, PalXCount%, UseExtendedPal%, NoHiPals%, DoDebugMode%
 COMMON SHARED Regs AS RegType 'Registers for interrupts
 
 '====[Temp Assets]====
@@ -83,6 +83,7 @@ COMMON SHARED Regs AS RegType 'Registers for interrupts
 'ConfigFlag% - 0 None 1 Loaded
 'LowMem% - Flag for <64KB free memory after assets loaded. Limit to 2 boards
 'NoHiPals% - 0-Default, 1-Only use 1,3,[5] and if CGAMode% = 1 dont use anything with >9 as a color
+'DoDebugMode% - 0-Default, 1-Allow keys to show debug settings
 
 '====[Program Runtime]====
 'B%, V%, H% - Mouse polling button, vertical and horizontal - I used large numbers as when a mouse is not connected it might give an error
@@ -184,6 +185,7 @@ SELECT CASE useParm$  'Apply the setting (no validation)
 	CASE "LOWMEM%": LowMem% = useVal%
 	CASE "USEEXTENDEDPAL%": UseExtendedPal% = useVal%
 	CASE "NOHIPALS%": NoHiPals% = useVal%
+	CASE "DODEBUGMODE%": DoDebugMode% = useVal%
 END SELECT
 
 
@@ -321,6 +323,7 @@ PRINT #F, "NoBlank%="; LTRIM$(STR$(NoBlank%))
 PRINT #F, "LowMem%="; LTRIM$(STR$(LowMem%))
 PRINT #F, "UseExtendedPal%="; LTRIM$((STR$(UseExtendedPal%)));
 PRINT #F, "NoHiPals%="; LTRIM$((STR$(NoHiPals%)));
+PRINT #F, "DoDebugMode%="; LTRIM$((STR$(DoDebugMode%)));
 CLOSE F
 
 END SUB
@@ -370,6 +373,8 @@ SUB PuzzleUI (UType%)
 'Put all of the PuzzleUI Routines here
 '1 - Initialise / Draw
 '2 - Info Panel Update
+'21 - Info Panel / Streak
+'22 - Info Panel / Errors
 '3 - Update Timer
 '4 - Update Puzzle Progress
 '5 - Update Target Progress
@@ -542,30 +547,39 @@ TimeString$ = SecsToTime$(INT(UseTimer&(2)), 0)
 L% = LEN(TimeString$)
 
 UseT% = SUIY% + 101 'Calc Once
+     
+      SELECT CASE LEFT$(TimeString$, 3)
+     
+      CASE "010"
+      IF PrvTimer%(6) <> -1 THEN 'Check and reposition once during 10 mins
+	      FOR X% = 1 TO 5: PrvTimer%(X%) = -1: NEXT X%
+	      LINE (SUIX% + 2, UseT%)-(SUIX% + 96, UseT% + 18), 0, BF 'Clear area
+	      PrvTimer%(6) = -1
+      END IF
+
+      CASE "100"
+      IF PrvTimer%(6) <> 6 THEN 'Check and reposition once during 100 mins
+	      FOR X% = 1 TO 5: PrvTimer%(X%) = -1: NEXT X%
+	      LINE (SUIX% + 2, UseT%)-(SUIX% + 96, UseT% + 18), 0, BF 'Clear area
+	      PrvTimer%(6) = 6
+      END IF
+     
+      END SELECT
+
+
 FOR UseK% = 1 TO L%
-	UChar$ = MID$(TimeString$, UseK%, 1)
+	UChar$ = MID$(TimeString$, UseK%, 1) 'Get Char
 	IF UChar$ = ":" THEN
 		UseV% = 11 'Seperator
 	ELSE
 		UseV% = VAL(UChar$)
 	END IF
-
-
-IF UseV% <> PrvTimer%(UseK% - 1) THEN 'Update
        
-	IF UseK% < 3 AND UseV% = 1 THEN 'If the minute column has a 1 in it - recentre timer
-		LINE (SUIX% + 2, UseT%)-(SUIX% + 96, UseT% + 18), 0, BF 'Clear area
-		PrvTimer%(3) = -1 'reset colon for PUT
-		SELECT CASE (UseK% - 1) 'Adjust offset
-			CASE 0, 2: PrvTimer%(6) = 7
-			CASE 1: PrvTimer%(6) = -1
-		END SELECT
+	IF UseV% <> PrvTimer%(UseK% - 1) THEN 'Perform Update
+	      'Draw the number/colon
+	      PUT (SUIX% + (((UseK% - 1)) * 15) + PrvTimer%(6), UseT%), BigFont%(UseV% * 32), PSET
+	      PrvTimer%(UseK% - 1) = UseV%
 	END IF
-
-      'Draw the number/colon
-      PUT (SUIX% + (((UseK% - 1)) * 15) + PrvTimer%(6), UseT%), BigFont%(UseV% * 32), PSET
-      PrvTimer%(UseK% - 1) = UseV%
-END IF
 NEXT UseK%
 
 CASE 4 'Puzzle Progress Update (Things)
@@ -603,7 +617,7 @@ PUT (SUIX% + 76, UseU%), BigFont%((UseB% MOD 10) * 32), PSET
 PrevTarMajor% = 1
 ELSE
 IF PrevTarMajor% = 1 THEN
-	LINE (SUIX% + 63, UseU%)-(SUIX% + 98, SUIY% + 85), 0, BF'Clear   
+	LINE (SUIX% + 63, UseU%)-(SUIX% + 98, SUIY% + 85), 0, BF'Clear
 	PrevTarMajor% = 0 'reset
 END IF
 PUT (SUIX% + 70, UseU%), BigFont%(UseB% * 32), PSET
@@ -904,10 +918,11 @@ SELECT CASE UKey$ 'Handle Key Inputs
 	CASE "1", "2", "3", "4" 'Board Switcher
 		UseV% = VAL(UKey$)
 		IF BoardMax% > 1 AND UseV% <> CurrentBoard% AND UseV% <= BoardMax% THEN
+		 HideMouse
 		 IF RemoveOnFind% = 1 THEN GET (OffSetX% - 1, OffSetY% - 1)-(OffSetX% + 197, OffSetY% + 161), Board%((CurrentBoard% - 1) * 4081) 'Update board for CLEAR
 		 CurrentBoard% = UseV%
 		 CellX% = OffSetX% + (BoardCols% + 1) * CellSize% - 1: CellY% = OffSetY% + (BoardRows% + 1) * CellSize% - 1
-		HideMouse
+		
 		PUT (OffSetX% - 1, OffSetY% - 1), Board%((CurrentBoard% - 1) * 4081), PSET: ShowMouse
 		 PuzzleUI 6
 		 GOSUB UpdateSel
@@ -930,19 +945,25 @@ SELECT CASE UKey$ 'Handle Key Inputs
 	CASE 4: UseAdlib% = 1: MuteFlag% = 3
 	END SELECT
 
-	'CASE "P", "p"
-	'LOCATE 1, 1: PRINT FRE(" "); FRE(-2); FRE(-1); FRE(0);
+	CASE "P", "p"
+	IF DoDebugMode% = 1 THEN : LOCATE 1, 1: PRINT FRE(" "); FRE(-2); FRE(-1); FRE(0);
        
 	CASE "{", "}"'Change Palettes in a non-timed game
-	IF CGAMode% = 1 AND UseTimer&(0) = 0 THEN
-	Prev% = NoBlank%: HideMouse: RandomPal: ShowMouse: NoBlank% = Prev%
-	IF UKey$ = "}" THEN 'Do it and show the numbers for debug
-		LOCATE 1, 1: FOR J% = 0 TO 3: PRINT SplitWords$(J%); " "; : NEXT J%
-		PRINT STRING$(3, " ");
-	END IF
+	IF CGAMode% = 1 AND UseTimer&(0) = 0 AND DoDebugMode% = 1 THEN
+		Prev% = NoBlank%: HideMouse: RandomPal: ShowMouse: NoBlank% = Prev%
+		IF UKey$ = "}" THEN 'Do it and show the numbers for debug
+			LOCATE 1, 1: FOR J% = 0 TO 3: PRINT SplitWords$(J%); " "; : NEXT J%
+			PRINT STRING$(3, " ");
+		END IF
 	END IF
 	
-	
+	CASE "L", "l": IF DoDebugMode% = 1 THEN : UseTimer&(2) = UseTimer&(2) + 50
+	CASE "|"
+	IF DoDebugMode% = 1 THEN 'Reset timer display
+		FOR I% = 0 TO 2: PrvTimer%(I%) = 0: NEXT I%
+		FOR I% = 3 TO 5: PrvTimer%(I%) = -1: NEXT I%
+	END IF
+
 
 
      

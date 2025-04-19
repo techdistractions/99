@@ -56,7 +56,7 @@ COMMON SHARED SUITabVis%, TryX%, TryY%, TryCount%, PuzListCount%
 COMMON SHARED UseP%, UseX%, UseY%, UseC%, UseF%, TargetCount%, OffSetX%, OffSetY%, Found%
 COMMON SHARED B%, V%, H%, RemoveOnFind%, CurrentBoard%, CFound%, GameStreakCount%, GameCurrentStreak%
 COMMON SHARED UseOrientations%, UseDispVar%, PrevBoard%, mButtonUP%, LastMenu%, MixBagSize%, GameErrorCount%, LowMem%, ConfigFlag%, GamePreset%
-COMMON SHARED PrevPuzMajor%, PrevTarMajor%, PalXCount%, UseExtendedPal%, NoHiPals%
+COMMON SHARED PrevPuzMajor%, PrevTarMajor%, PalXCount%, UseExtendedPal%, NoHiPals%, DoDebugMode%
 COMMON SHARED Regs AS RegType 'Registers for interrupts
 
 '====[Temp Assets]====
@@ -87,6 +87,7 @@ COMMON SHARED Regs AS RegType 'Registers for interrupts
 'ConfigFlag% - 0 None 1 Loaded
 'LowMem% - Flag for <64KB free memory after assets loaded. Limit to 2 boards
 'NoHiPals% - 0-Default, 1-Only use 1,3,[5] and if CGAMode% = 1 dont use anything with >9 as a color
+'DoDebugMode% - 0-Default, 1-Allow keys to show debug settings
 
 '====[Program Runtime]====
 'B%, V%, H% - Mouse polling button, vertical and horizontal - I used large numbers as when a mouse is not connected it might give an error

@@ -1,7 +1,7 @@
 99Things! - CGA Version README.TXT
 ==================================
 
-Version: 1.0.1 - 18th April 2025
+Version: 1.0.2 - 19th April 2025
 4am Programming
 Website: www.4am.org/99
 
@@ -225,6 +225,18 @@ This code went through a few twists and turns as I had to re-scope and remove ma
 features and items to fit under the 256KB limbo-bar. 		
 
 Changelog
+
+v1.0.2 - 19th April 2025 - Micro Update
+
+[FIX] Mouse Cursor being captured on GET/PUT
+Moved Hidemouse before switching
+
+[ADDED] debug key L to skip ahead 50 seconds
+[ADDED] DoDebugMode% as setting
+
+[FIX] Timer resets once 109 minutes is hit
+Reworked timer events to watch for a minute at the 10 and 100 minute mark to move timer location
+
 ---------
 v1.0.1 - 18th April 2025 - Micro Update
 
