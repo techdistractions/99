@@ -321,9 +321,9 @@ PRINT #F, "UseAdlib%="; LTRIM$(STR$(UseAdlib%))
 PRINT #F, "UsePCSpk%="; LTRIM$(STR$(UsePCSpk%))
 PRINT #F, "NoBlank%="; LTRIM$(STR$(NoBlank%))
 PRINT #F, "LowMem%="; LTRIM$(STR$(LowMem%))
-PRINT #F, "UseExtendedPal%="; LTRIM$((STR$(UseExtendedPal%)));
-PRINT #F, "NoHiPals%="; LTRIM$((STR$(NoHiPals%)));
-PRINT #F, "DoDebugMode%="; LTRIM$((STR$(DoDebugMode%)));
+PRINT #F, "UseExtendedPal%="; LTRIM$((STR$(UseExtendedPal%)))
+PRINT #F, "NoHiPals%="; LTRIM$((STR$(NoHiPals%)))
+PRINT #F, "DoDebugMode%="; LTRIM$((STR$(DoDebugMode%)))
 CLOSE F
 
 END SUB
