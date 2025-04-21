@@ -103,6 +103,8 @@ COMMON SHARED Regs AS RegType 'Registers for interrupts
 'dItem%() - Item Type, dVal%() - Item Value, dInitVal%() - Default Value, dMinVal%(), dMaxVal%() Bounds
 'dStartX%() & dStartY%(),dEndX%(), dEndY%() - End co-ords for item
 
+'SessionFlags%() - Array for remembering last values: QuickGame [0-3], 99Things [4-7], Custom Game [8-13]
+
 '====[Game Setup]====
 'BoardMax% - 1 Single, 2 L/R, 3 L/M/R, 4 2x2
 'GamePreset% - 0-4 Easy,Normal,Tricky,Tough,[Insane -99Things only]
@@ -155,14 +157,14 @@ COMMON SHARED Logo%(), BigFont%(), PuzzleCount%(), Puzzle%(), Pattern%(), ThingD
 COMMON SHARED Board%(), mFont%(), BoardGenFlag%(), PrvSel%(), CurSel%(), PuzzleFlag%()
 COMMON SHARED OtherAsset%(), UseTimer&(), PuzzleO%(), PuzzleD%(), SUIArea%(), PrvTimer%(), dVal%()
 COMMON SHARED SplitWords$(), dItem%(), dStartX%(), dStartY%(), dInitVal%(), dMinVal%(), dMaxVal%(), dText$(), dHover$(), dEndX%(), dEndY%()
-COMMON SHARED rUser$(), rTime%(), rDate$(), rStreak%(), rErrors%(), PalX$()
+COMMON SHARED rUser$(), rTime%(), rDate$(), rStreak%(), rErrors%(), PalX$(), SessionFlags%()
 
 
 REDIM SHARED Snd(1 TO 10) AS STRING * 30 'For adlib sound fx spacing
 DIM SHARED Screener%(8001), Thing%(17830), PuzList%(100), SmallFont%(1000), TempImage%(128), TargetList%(196), TargetListFlag$(98), Logo%(570)
 DIM SHARED BigFont%(384), PuzzleCount%(100), Puzzle%(100), Pattern%(45 * 15), ThingDef$(400), Board%(1), mFont%(910), BoardGenFlag%(4)
 DIM SHARED PrvSel%(5), CurSel%(5), PuzzleFlag%(100), OtherAsset%(302), UseTimer&(6), SUIArea%(1001), PrvTimer%(6), dVal%(20), dEndX%(20), dEndY%(20)
-DIM SHARED SplitWords$(128), rUser$(6), rTime%(6), rDate$(6), rStreak%(6), rErrors%(6), PalX$(10)
+DIM SHARED SplitWords$(128), rUser$(6), rTime%(6), rDate$(6), rStreak%(6), rErrors%(6), PalX$(10), SessionFlags%(14)
 
 '---------------
 
@@ -177,6 +179,7 @@ UseAdlib% = 0 'Attempt to use the Adlib
 UsePCSpk% = 1 'Use PC Speaker? or 0
 UseMouse% = 0 'Attempt to use the mouse
 LowMem% = 0 'Over 256KB RAM
+FOR X% = 0 TO 13: SessionFlags%(X%) = -1: NEXT X% 'Reset last settings flags
 
 'File Check routine
 ON ERROR GOTO FailFile
@@ -273,8 +276,9 @@ FOR UseX% = 0 TO 3 'Scrape UI Elements [Checkbox, ScrollBox, RadioButtons]
 	GET (202 + UseU%, 67)-(212 + UseU%, 77), OtherAsset(28 + (20 * UseX%))
 	IF UseX% < 2 THEN GET (202 + UseU%, 80)-(212 + UseU%, 90), OtherAsset(108 + (20 * UseX%))
 NEXT UseX%
-GET (202, 48)-(216, 61), OtherAsset%(148) 'Computer Tile
 GET (231, 37)-(260, 64), OtherAsset%(188) 'Star
+GET (203, 46)-(212, 55), OtherAsset%(148) 'Tick
+GET (216, 46)-(225, 55), OtherAsset%(168) 'Cross
 
 CLS 'Final Loading Phase
 cPrint "Check Memory..", 24, 24, 1, 0 'Initial Load message and progress
@@ -416,9 +420,13 @@ dAddI 3, 3, 55, 132, 1, 2, 0, "Timed Game ", "Keep records of the quickest times
 dAddI 4, 3, 55, 148, 1, 3, 0, "Clear things when found (easy) ", "Things disappear when found - VERY EASY"
 dAddI 0, 7, 240, 138, 77, 1, 1, "   Start|   Game!", "Start game using settings above"
 dAddI 5, 5, 36, 74, 0, 1, 0, "Select game difficulty:", ""
+
+FOR X% = 1 TO 4 'Pre Dialog update copy SessionFlag to dInitVal
+	IF SessionFlags%(X% - 1) > -1 THEN dInitVal%(X%) = SessionFlags%(X% - 1)
+NEXT X%
 I% = DoDialog%(dTitle$, dCount%, dItem%(), dStartX%(), dStartY%(), dInitVal%(), dMinVal%(), dMaxVal%(), dText$(), dHover$())
 IF I% = -1 THEN GOTO mnuMain 'Cancel Game Launch
-
+FOR X% = 1 TO 4: SessionFlags%(X% - 1) = dVal%(X%): NEXT X% 'Copy dVal to SessionFlags
 GameType% = 1
 BoardMax% = 1 'Always 1 board for Quick Game
 RemoveOnFind% = dVal%(4) 'Clear if found?
@@ -451,7 +459,15 @@ dAddI 2, 0, 36, 106, 1, 0, 0, "EASY (15) 1*ROTATE 2*STYLE|NORMAL (30) 2*ROTATE 4
 dAddI 3, 3, 36, 124, 1, 1, 0, "Play a timed game", "Timed game for records keeping"
 dAddI 4, 3, 36, 142, 0, 1, 0, "Clear things when found (easier)", "If checked things will disappear when found"
 dAddI 5, 5, 28, 70, 0, 3, 0, "Choose game settings", ""
+
+IF LowMem% = 1 AND SessionFlags%(4) > 1 THEN SessionFlags%(4) = 1  'Look for illegal setting
+FOR X% = 4 TO 7 'Pre Dialog update copy SessionFlag to dInitVal
+	IF SessionFlags%(X%) > -1 THEN dInitVal%(X% - 3) = SessionFlags%(X%)
+NEXT X%
+
 I% = DoDialog%(dTitle$, dCount%, dItem%(), dStartX%(), dStartY%(), dInitVal%(), dMinVal%(), dMaxVal%(), dText$(), dHover$())
+FOR X% = 4 TO 7: SessionFlags%(X%) = dVal%(X% - 3): NEXT X%'Copy back to SessionFlags
+
 IF I% = -1 THEN GOTO mnuMain 'Cancel Game Launch
 RemoveOnFind% = dVal%(4) 'Clear if found?
 UseTimer&(0) = dVal%(3) 'Use Timer?
@@ -481,7 +497,15 @@ dAddI 4, 1, 36, 152, 6, 2, 9, "THING STYLE VARIATIONS", "Mix up thing colors to 
 dAddI 5, 3, 36, 164, 1, 1, 0, "Clear things when found (easier)", "If checked things will disappear when found"
 dAddI 6, 7, 196, 154, 60, 2, 2, "Start Game!", "Start game using the settings above"
 dAddI 7, 5, 28, 70, 0, 3, 0, "Choose the custom game setup", ""
+IF LowMem% = 1 AND SessionFlags%(10) > 1 THEN SessionFlags%(10) = 1  'Look for illegal setting
+FOR X% = 8 TO 13 'Pre Dialog update copy SessionFlag to dInitVal
+	IF SessionFlags%(X%) > -1 THEN dInitVal%(X% - 8) = SessionFlags%(X%)
+NEXT X%
+
 I% = DoDialog%(dTitle$, dCount%, dItem%(), dStartX%(), dStartY%(), dInitVal%(), dMinVal%(), dMaxVal%(), dText$(), dHover$())
+
+FOR X% = 8 TO 13: SessionFlags%(X%) = dVal%(X% - 8): NEXT X%'Copy back to SessionFlags
+
 IF I% = -1 THEN GOTO mnuMain 'Cancel Game Launch
 GameType% = 4
 

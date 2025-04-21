@@ -1,7 +1,7 @@
 99Things! - CGA Version README.TXT
 ==================================
 
-Version: 1.0.2a - 19th April 2025
+Version: 1.1.0 - 21st April 2025
 4am Programming
 Website: www.4am.org/99
 
@@ -31,10 +31,15 @@ Want to shoot for a record best time?
 Disable clear/disappearing things and enable the timed game.
 Records are ranked on the quickest time, least amount of errors and highest 
 streaks of things found in a row.
+You'll get feedback for correct or incorrect tries both audibly (if sound enabled)
+and visually with a tick / cross appearing inside the thing for a few seconds
 
 Want to just chill out?
 Enable clear/disappearing things, disable the timed game.
 Sit back, relax and clear boards at your own pace.
+You'll get feedback for correct or incorrect tries both audibly (if sound enabled)
+and visually with a thing disappearing for a correct try and a cross appearing 
+inside the thing for a few seconds for incorrect tries.
 
 System Requirements & Recommendations
 -------------------------------------
@@ -225,11 +230,27 @@ This code went through a few twists and turns as I had to re-scope and remove ma
 features and items to fit under the 256KB limbo-bar. 		
 
 Changelog
+---------
+
+v1.1.0 - 21st April 2025 - Minor Update
+---------------------------------------
+[FIX] Board Switcher grabs screen in CLEAR mode with mouse
+
+[CHANGE] Simplified board switcher to a single function regardless of input
+
+[UPDATE] ASSET.CGA to have tick/cross mark images for things
+
+[ADDED] Visual Feedback. In CLEAR mode a cross appears for wrong choices.
+In NO-CLEAR mode a tick appears for correct tries and a cross appears for incorrect ones.
+
+[ADDED] Remember last settings for QuickGame, 99Things and Custom Game modes.
 
 v1.0.2a - 19th April 2025 - Micro Update
+---------------------------------------
 [FIX] Removed ; from CONFIG.DAT DoSetup
 
 v1.0.2 - 19th April 2025 - Micro Update
+---------------------------------------
 
 [FIX] Mouse Cursor being captured on GET/PUT
 Moved Hidemouse before switching
@@ -240,8 +261,8 @@ Moved Hidemouse before switching
 [FIX] Timer resets once 109 minutes is hit
 Reworked timer events to watch for a minute at the 10 and 100 minute mark to move timer location
 
----------
 v1.0.1 - 18th April 2025 - Micro Update
+---------------------------------------
 
 [WORKAROUND] 'ESC' key doesn't work well in emulators.
 Added - F10 key to perform same function as ESC in QuickGame and DoDialog
@@ -258,5 +279,5 @@ Added - F10 key to perform same function as ESC in QuickGame and DoDialog
 	Can be adjusted in CONFIG.DAT manually by setting NoHiPal% = 1 to force 1,3,5 pals
 
 v1.0.0 - 17th April 2025 - Initial release
-
+---------------------------------------
 

@@ -99,6 +99,8 @@ COMMON SHARED Regs AS RegType 'Registers for interrupts
 'dItem%() - Item Type, dVal%() - Item Value, dInitVal%() - Default Value, dMinVal%(), dMaxVal%() Bounds
 'dStartX%() & dStartY%(),dEndX%(), dEndY%() - End co-ords for item
 
+'SessionFlags%() - Array for remembering last values: QuickGame [0-3], 99Things [4-7], Custom Game [8-13]
+
 '====[Game Setup]====
 'BoardMax% - 1 Single, 2 L/R, 3 L/M/R, 4 2x2
 'GamePreset% - 0-4 Easy,Normal,Tricky,Tough,[Insane -99Things only]
@@ -151,14 +153,14 @@ COMMON SHARED Logo%(), BigFont%(), PuzzleCount%(), Puzzle%(), Pattern%(), ThingD
 COMMON SHARED Board%(), mFont%(), BoardGenFlag%(), PrvSel%(), CurSel%(), PuzzleFlag%()
 COMMON SHARED OtherAsset%(), UseTimer&(), PuzzleO%(), PuzzleD%(), SUIArea%(), PrvTimer%(), dVal%()
 COMMON SHARED SplitWords$(), dItem%(), dStartX%(), dStartY%(), dInitVal%(), dMinVal%(), dMaxVal%(), dText$(), dHover$(), dEndX%(), dEndY%()
-COMMON SHARED rUser$(), rTime%(), rDate$(), rStreak%(), rErrors%(), PalX$()
+COMMON SHARED rUser$(), rTime%(), rDate$(), rStreak%(), rErrors%(), PalX$(), SessionFlags%()
 
 
 REDIM SHARED Snd(1 TO 10) AS STRING * 30 'For adlib sound fx spacing
 DIM SHARED Screener%(8001), Thing%(17830), PuzList%(100), SmallFont%(1000), TempImage%(128), TargetList%(196), TargetListFlag$(98), Logo%(570)
 DIM SHARED BigFont%(384), PuzzleCount%(100), Puzzle%(100), Pattern%(45 * 15), ThingDef$(400), Board%(1), mFont%(910), BoardGenFlag%(4)
 DIM SHARED PrvSel%(5), CurSel%(5), PuzzleFlag%(100), OtherAsset%(302), UseTimer&(6), SUIArea%(1001), PrvTimer%(6), dVal%(20), dEndX%(20), dEndY%(20)
-DIM SHARED SplitWords$(128), rUser$(6), rTime%(6), rDate$(6), rStreak%(6), rErrors%(6), PalX$(10)
+DIM SHARED SplitWords$(128), rUser$(6), rTime%(6), rDate$(6), rStreak%(6), rErrors%(6), PalX$(10), SessionFlags%(14)
 
 '---------------
 
@@ -642,14 +644,12 @@ END SUB
 SUB QuickGame 'Game Board 2.0
 QuickGameStart:
 HideMouse
-REDIM TempImage%(128)
-IF UsePCSpk% = 1 THEN
-MuteFlag% = 2
-END IF
+REDIM TempImage%(128), ThingTickX%(10), ThingTickY%(10), ThingTickImg%(200)
+ThingTickC% = -1 'Empty
 
-IF UseAdlib% = 1 THEN
-MuteFlag% = 3 'Figure out what we would mute
-END IF
+'Figure out what we would mute
+IF UsePCSpk% = 1 THEN MuteFlag% = 2
+IF UseAdlib% = 1 THEN MuteFlag% = 3
 
 'Set Up Screen
 CLS
@@ -820,13 +820,20 @@ END IF
 
 GameKey: 'Key Manager for QuickGame
 	DO: UKey$ = INKEY$:         'Key Manager
-			IF UseTimer&(0) = 1 THEN 'Handle Timer
-				S& = TIMER MOD 60
-				IF S& <> LastSec& THEN 'Handle timer change (dont store over 30k seconds)
+		       
+			S& = TIMER MOD 60
+			IF S& <> LastSec& THEN 'Handle timer change (dont store over 30k seconds)
+				LastSec& = S& 'Tick over
+				IF UseTimer&(0) = 1 THEN 'Handle Timer
 					IF UseTimer&(2) < 30000 THEN UseTimer&(2) = UseTimer&(2) + 1 'Increment
 					IF UseTimer&(2) < 0 THEN GOTO GameKey'catch first second glitch
-					LastSec& = S&:  PuzzleUI 3'Update UI
-					END IF
+					PuzzleUI 3 'Update UI
+				END IF
+				IF ThingTickC% > -1 AND Ticker% < 2 THEN 'Check if 2 seconds has passed
+					Ticker% = Ticker% + 1 'Accumulate
+				ELSE 'Remove marked items
+					GOSUB ClearMarkedThings
+				END IF
 			END IF
 		       
 			IF UseMouse% = 1 THEN 'Handle Mouse Input
@@ -841,22 +848,14 @@ GameKey: 'Key Manager for QuickGame
 						ELSE 'Clicked somewhere else in UI
 						SELECT CASE V%
 							CASE SUIY% + 131 TO SUIY% + 143 'Board Switcher?
-								IF BoardMax% > 1 THEN '2 or more
-									FOR UseA% = 1 TO BoardMax%
-									SELECT CASE useH!
-										CASE ((UseA% - 1) * 16) + SUIX% + 2 TO ((UseA% - 1) * 16) + SUIX% + 18
-											
-										CurrentBoard% = UseA%
-										CellX% = OffSetX% + (BoardCols% + 1) * CellSize% - 1: CellY% = OffSetY% + (BoardRows% + 1) * CellSize% - 1
-										HideMouse
-										PUT (OffSetX% - 1, OffSetY% - 1), Board%((CurrentBoard% - 1) * 4081), PSET
-										ShowMouse
-										PuzzleUI 6
+								FOR UseV% = 1 TO BoardMax%
+								SELECT CASE useH!
+									CASE ((UseV% - 1) * 16) + SUIX% + 2 TO ((UseV% - 1) * 16) + SUIX% + 18
+										GOSUB SwitchBoard
 										EXIT FOR
-																					
-									END SELECT
-									NEXT UseA%
-								END IF
+								END SELECT
+								NEXT UseV%
+								
 						END SELECT
 					END IF
 				END IF
@@ -906,8 +905,10 @@ SELECT CASE UKey$ 'Handle Key Inputs
 		SELECT CASE SubUKey$
 		
 		CASE "Y", "y":
-		SELECT CASE MuteFlag%: CASE 1, 2: UsePCSpk% = 1: UseAdlib% = 0: CASE 3, 4: UseAdlib% = 1: UsePCSpk% = 0: END SELECT
-		ERASE Board%: EXIT SUB
+			SELECT CASE MuteFlag%: CASE 1, 2: UsePCSpk% = 1: UseAdlib% = 0: CASE 3, 4: UseAdlib% = 1: UsePCSpk% = 0: END SELECT
+			ERASE ThingTickX%, ThingTickY%, ThingTickImg%, Board%
+			CLS
+			EXIT SUB
 		END SELECT
 	       
 		'Resume game
@@ -917,16 +918,7 @@ SELECT CASE UKey$ 'Handle Key Inputs
 
 	CASE "1", "2", "3", "4" 'Board Switcher
 		UseV% = VAL(UKey$)
-		IF BoardMax% > 1 AND UseV% <> CurrentBoard% AND UseV% <= BoardMax% THEN
-		 HideMouse
-		 IF RemoveOnFind% = 1 THEN GET (OffSetX% - 1, OffSetY% - 1)-(OffSetX% + 197, OffSetY% + 161), Board%((CurrentBoard% - 1) * 4081) 'Update board for CLEAR
-		 CurrentBoard% = UseV%
-		 CellX% = OffSetX% + (BoardCols% + 1) * CellSize% - 1: CellY% = OffSetY% + (BoardRows% + 1) * CellSize% - 1
-		
-		PUT (OffSetX% - 1, OffSetY% - 1), Board%((CurrentBoard% - 1) * 4081), PSET: ShowMouse
-		 PuzzleUI 6
-		 GOSUB UpdateSel
-		END IF
+		GOSUB SwitchBoard
 
 	CASE CHR$(0) + CHR$(59) 'F1
 	IF SUITabVis% <> 1 THEN : SUITabVis% = 1: PUT (SUIX%, SUIY% + 157), SUIArea%(0), PSET: PuzzleUI 2'Update Panel
@@ -984,15 +976,18 @@ IF Puzzle%(Cell%) = PuzList%(PuzPos%) AND PuzzleFlag%(Cell%) = 0 THEN  'Found!
 	'TODO: Update Streak PuzzleUI
 	PuzzleUI 21
 
+	InCellX% = OffSetX% + (TryX% * CellSize%) + OffSetC%
+	InCellY% = OffSetY% + (TryY% * CellSize%) + OffSetC%
+
 	IF RemoveOnFind% = 1 THEN 'Clear!
-		InCellX% = OffSetX% + (TryX% * CellSize%) + OffSetC%
-		InCellY% = OffSetY% + (TryY% * CellSize%) + OffSetC%
 		SELECT CASE PuzzleD%(Cell%): CASE 7, 8, 1: UseBG% = 0: CASE 10, 2, 3: UseBG% = 1: CASE 9, 4, 5: UseBG% = 2: CASE 6, 11, 12: UseBG% = 3: END SELECT
 		HideMouse
 		LINE (InCellX%, InCellY%)-(InCellX% + 16, InCellY% + 16), UseBG%, BF
 		ShowMouse
-		
+	ELSE    'Dont'Clear, Mark instead
+		MarkValue% = 148: GOSUB MarkThing
 	END IF
+       
 	PuzzleCount%(PuzPos%) = PuzzleCount%(PuzPos%) - 1
 	IF PuzzleCount%(PuzPos%) = 0 THEN 'Thing complete
 		PuzPos% = PuzPos% + 1
@@ -1061,10 +1056,13 @@ IF Puzzle%(Cell%) = PuzList%(PuzPos%) AND PuzzleFlag%(Cell%) = 0 THEN  'Found!
 	PuzFlag% = 1: PuzzleUI 5  'Update Target Thing
 	END IF
 ELSE 'PuzzleTry failed
-GameErrorCount% = GameErrorCount% + 1
-GameCurrentStreak% = 0 'Reset
-PuzzleUI 22 'Update Streak PuzzleUI
-
+	GameErrorCount% = GameErrorCount% + 1
+	GameCurrentStreak% = 0 'Reset
+	PuzzleUI 22 'Update Streak PuzzleUI
+	'Mark an error
+	InCellX% = OffSetX% + (TryX% * CellSize%) + OffSetC%
+	InCellY% = OffSetY% + (TryY% * CellSize%) + OffSetC%
+	MarkValue% = 168: GOSUB MarkThing
 END IF
 GOTO GameKey 'Loop back to key handler
 
@@ -1100,11 +1098,53 @@ IF UseMouse% = 1 THEN  'Cursor Mouse!
 	INTERRUPT &H33, Regs, Regs
 	END IF
 END IF
-
-
 RETURN
 
+MarkThing: 'Use MarkValue% to put a tick or cross on a thing for visual feedback
 
+		Flag% = 0: IF ThingTickC% = -1 THEN GOTO PTMarker
+		FOR K% = 0 TO ThingTickC% 'Check if marker already exists
+			IF ThingTickX%(K%) = InCellX% AND ThingTickY%(K%) = InCellY% THEN : Flag% = 1: EXIT FOR
+		NEXT K%
+		IF ThingTickC% > 9 OR Flag% = 1 THEN GOTO PTMSkipper
+PTMarker:       'Mark and update
+		ThingTickC% = ThingTickC% + 1
+		ThingTickX%(ThingTickC%) = InCellX%: ThingTickY%(ThingTickC%) = InCellY%
+		HideMouse
+		GET (InCellX%, InCellY%)-(InCellX% + 10, InCellY% + 10), ThingTickImg%(ThingTickC% * 20)
+		'put the 10x10 tick or cross here
+		PUT (InCellX%, InCellY%), OtherAsset%(MarkValue%), PRESET
+		ShowMouse
+PTMSkipper:
+RETURN
+
+ClearMarkedThings: 'Visibly undo all the marked things on a board
+IF ThingTickC% > -1 THEN
+	HideMouse
+	FOR K% = 0 TO ThingTickC%
+	PUT (ThingTickX%(K%), ThingTickY%(K%)), ThingTickImg%(K% * 20), PSET
+	NEXT K%
+	ThingTickC% = -1 'reset
+	Ticker% = 0
+	ShowMouse
+END IF
+RETURN
+
+SwitchBoard:
+IF BoardMax% > 1 AND UseV% <> CurrentBoard% AND UseV% <= BoardMax% THEN
+	HideMouse
+	IF RemoveOnFind% = 1 THEN 'Extra Steps if CLEAR THINGS are on
+	       GOSUB ClearMarkedThings
+	       GET (OffSetX% - 1, OffSetY% - 1)-(OffSetX% + 197, OffSetY% + 161), Board%((CurrentBoard% - 1) * 4081) 'Update board for CLEAR
+	END IF
+	ThingTickC% = -1 'Reset marked things
+	CurrentBoard% = UseV%
+	CellX% = OffSetX% + (BoardCols% + 1) * CellSize% - 1: CellY% = OffSetY% + (BoardRows% + 1) * CellSize% - 1
+	PUT (OffSetX% - 1, OffSetY% - 1), Board%((CurrentBoard% - 1) * 4081), PSET: ShowMouse
+	PuzzleUI 6
+	GOSUB UpdateSel 'Stack??
+END IF
+	RETURN
 END SUB
 
 REM $STATIC
