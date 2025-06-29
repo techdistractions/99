@@ -1,7 +1,7 @@
 99Things! - CGA Version README.TXT
 ==================================
 
-Version: 1.1.0 - 21st April 2025
+Version: 1.1.1 - 29th June 2025
 4am Programming
 Website: www.4am.org/99
 
@@ -46,7 +46,7 @@ System Requirements & Recommendations
 99Things will run on just about any MS-DOS PC.
 - Intel 8088 or compatible running at 4.77mhz (IBM-PC, PC-XT)
 - 256KB of RAM or above
-- CGA Capable Graphics or above
+- CGA Capable Graphics or above (use HGCIBM.COM for Hercules CGA)
 - MS-DOS 2.11 or above
 - Floppy disk or hard disk with about 280KB free space
 
@@ -231,6 +231,10 @@ features and items to fit under the 256KB limbo-bar.
 
 Changelog
 ---------
+
+v1.1a - 29th June 2025 - Micro Update
+[FIX] - When providing feedback game would crash if >9 feedback tick/crosses appeared
+[ADDED] - Version indicator on main menu
 
 v1.1.0 - 21st April 2025 - Minor Update
 ---------------------------------------
