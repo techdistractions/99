@@ -692,6 +692,7 @@ SELECT CASE dItem%(I%)
 		iPrint "(2025)", OffSetX% + 182, OffSetY% + 19, 2, 0
 		iPrint "4am Programming", OffSetX% + 208, OffSetY% + 19, 3, 0
 		iPrint "4am.org/99", OffSetX% + 228, OffSetY% + 25, 3, 0
+		iPrint "v1.1a", OffSetX% + 248, OffSetY% + 31, 2, 0
 		FOR X% = 1 TO 2: PUT (OffSetX% + 190 + (X% * 19), OffSetY% + 5 + (X% * 33)), OtherAsset%(188), PSET: NEXT X%
 
 END SELECT

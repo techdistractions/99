@@ -1106,7 +1106,7 @@ MarkThing: 'Use MarkValue% to put a tick or cross on a thing for visual feedback
 		FOR K% = 0 TO ThingTickC% 'Check if marker already exists
 			IF ThingTickX%(K%) = InCellX% AND ThingTickY%(K%) = InCellY% THEN : Flag% = 1: EXIT FOR
 		NEXT K%
-		IF ThingTickC% > 9 OR Flag% = 1 THEN GOTO PTMSkipper
+		IF ThingTickC% > 8 OR Flag% = 1 THEN GOTO PTMSkipper
 PTMarker:       'Mark and update
 		ThingTickC% = ThingTickC% + 1
 		ThingTickX%(ThingTickC%) = InCellX%: ThingTickY%(ThingTickC%) = InCellY%
